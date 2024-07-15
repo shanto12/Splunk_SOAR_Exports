@@ -1,8 +1,8 @@
-def update_artifact(artifact_id_input=None, new_cef_input=None, replace_cef=False, **kwargs):
+def update_artifact(artifact_id_list=None, cef_dict_list=None, replace_cef=False, **kwargs):
     """
     Args:
-        artifact_id_input (CEF type: phantom artifact id or list of phantom artifact ids)
-        new_cef_input (CEF type: dictionary or list of dictionaries)
+        artifact_id_list (CEF type: phantom artifact id or list of phantom artifact ids)
+        cef_dict_list (CEF type: dictionary or list of dictionaries)
         replace_cef (CEF type: boolean, default: False)
     
     Returns a JSON-serializable object that implements the configured data paths:
@@ -40,13 +40,14 @@ def update_artifact(artifact_id_input=None, new_cef_input=None, replace_cef=Fals
             phantom.debug(f"Exception while REST GET call : {url}")
             phantom.debug(str(e))
     
-    def deep_merge(source, destination):
+    def deep_merge(source, destination, replace=False):
         for key, value in source.items():
             if isinstance(value, dict):
                 node = destination.setdefault(key, {})
-                deep_merge(value, node)
+                deep_merge(value, node, replace)
             else:
-                destination[key] = value
+                if replace or key not in destination:
+                    destination[key] = value
         return destination
 
     def update_single_artifact(artifact_id, new_cef_dict):
@@ -61,10 +62,7 @@ def update_artifact(artifact_id_input=None, new_cef_input=None, replace_cef=Fals
         
         current_cef_dict = artifact_json.get("cef", {})
         
-        if replace_cef:
-            updated_cef = new_cef_dict
-        else:
-            updated_cef = deep_merge(new_cef_dict, current_cef_dict.copy())
+        updated_cef = deep_merge(new_cef_dict, current_cef_dict.copy(), replace_cef)
         
         phantom.debug(f"New cef dict after merging is: {updated_cef}")
         
@@ -72,30 +70,18 @@ def update_artifact(artifact_id_input=None, new_cef_input=None, replace_cef=Fals
         rest_post_call(artifact_post_url, json.dumps({"cef": updated_cef}))
 
     # Input validation
-    if artifact_id_input is None or new_cef_input is None:
-        phantom.debug("Both artifact_id_input and new_cef_input must be provided")
+    if artifact_id_list is None or cef_dict_list is None:
+        phantom.debug("Both artifact_id_list and cef_dict_list must be provided")
         return outputs
 
-    # Convert inputs to lists if they're single items
-    artifact_ids = [artifact_id_input] if isinstance(artifact_id_input, str) else artifact_id_input
-    new_cef_dicts = [new_cef_input] if isinstance(new_cef_input, dict) else new_cef_input
-
-    # Validate input types
-    if not isinstance(artifact_ids, list) or not isinstance(new_cef_dicts, list):
-        phantom.debug("Invalid input types. Both inputs must be either single items or lists.")
-        return outputs
+    # Convert inputs to lists if they're not already
+    artifact_ids = artifact_id_list if isinstance(artifact_id_list, list) else [artifact_id_list]
+    new_cef_dicts = cef_dict_list if isinstance(cef_dict_list, list) else [cef_dict_list]
 
     # Validate input lengths
     if len(artifact_ids) != len(new_cef_dicts):
         phantom.debug("Mismatch in input lengths. Number of artifact IDs must match number of CEF dictionaries.")
         return outputs
-
-    # Validate replace_cef input
-    if not isinstance(replace_cef, bool):
-        if isinstance(replace_cef, str):
-            replace_cef = replace_cef.lower() == 'true'
-        else:
-            replace_cef = False
 
     phantom.debug(f"Processing {len(artifact_ids)} artifacts with replace_cef={replace_cef}")
 
