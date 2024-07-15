@@ -1,0 +1,108 @@
+def update_artifact(artifact_id_input=None, new_cef_input=None, replace_cef=False, **kwargs):
+    """
+    Args:
+        artifact_id_input (CEF type: phantom artifact id or list of phantom artifact ids)
+        new_cef_input (CEF type: dictionary or list of dictionaries)
+        replace_cef (CEF type: boolean, default: False)
+    
+    Returns a JSON-serializable object that implements the configured data paths:
+        
+    """
+    ############################ Custom Code Goes Below This Line #################################
+    import json
+    import phantom.rules as phantom
+    
+    outputs = {}
+    
+    def rest_post_call(url, data):        
+        phantom.debug(f"Executing REST POST on url: {url}. With data: {data}")
+        
+        try:
+            r = phantom.requests.post(url, verify=False, data=data)
+            if r.status_code == 200:
+                phantom.debug(f"REST POST call successfully completed for url: {url} status_code: {r.status_code}. response text: {r.text}")                
+            else:
+                phantom.debug(f"ERROR: REST POST call failed for url: {url} status_code: {r.status_code}. response text: {r.text}")                
+        except Exception as e:
+            phantom.debug(f"Exception while REST POST call : {url}")
+            phantom.debug(str(e))
+        
+    def rest_get_call(url):        
+        phantom.debug(f"Executing REST GET on: {url}")
+        try:
+            r = phantom.requests.get(url, verify=False)
+            if r.status_code == 200:
+                phantom.debug(f"REST GET call successfully completed for url: {url} status_code: {r.status_code}. response text: {r.text}")
+                return r.json()
+            else:
+                phantom.debug(f"ERROR: REST GET call failed for url: {url} status_code: {r.status_code}. response text: {r.text}")                
+        except Exception as e:
+            phantom.debug(f"Exception while REST GET call : {url}")
+            phantom.debug(str(e))
+    
+    def deep_merge(source, destination):
+        for key, value in source.items():
+            if isinstance(value, dict):
+                node = destination.setdefault(key, {})
+                deep_merge(value, node)
+            else:
+                destination[key] = value
+        return destination
+
+    def update_single_artifact(artifact_id, new_cef_dict):
+        phantom.debug(f"Updating artifact: {artifact_id} with new_cef value dict: {new_cef_dict}")                
+        rest_url = phantom.get_rest_base_url()
+        get_artifact_url = f"{rest_url}artifact/{artifact_id}"
+        artifact_json = rest_get_call(get_artifact_url)
+        
+        if not artifact_json:
+            phantom.debug(f"Failed to retrieve artifact {artifact_id}")
+            return
+        
+        current_cef_dict = artifact_json.get("cef", {})
+        
+        if replace_cef:
+            updated_cef = new_cef_dict
+        else:
+            updated_cef = deep_merge(new_cef_dict, current_cef_dict.copy())
+        
+        phantom.debug(f"New cef dict after merging is: {updated_cef}")
+        
+        artifact_post_url = f"{rest_url}artifact/{artifact_id}"
+        rest_post_call(artifact_post_url, json.dumps({"cef": updated_cef}))
+
+    # Input validation
+    if artifact_id_input is None or new_cef_input is None:
+        phantom.debug("Both artifact_id_input and new_cef_input must be provided")
+        return outputs
+
+    # Convert inputs to lists if they're single items
+    artifact_ids = [artifact_id_input] if isinstance(artifact_id_input, str) else artifact_id_input
+    new_cef_dicts = [new_cef_input] if isinstance(new_cef_input, dict) else new_cef_input
+
+    # Validate input types
+    if not isinstance(artifact_ids, list) or not isinstance(new_cef_dicts, list):
+        phantom.debug("Invalid input types. Both inputs must be either single items or lists.")
+        return outputs
+
+    # Validate input lengths
+    if len(artifact_ids) != len(new_cef_dicts):
+        phantom.debug("Mismatch in input lengths. Number of artifact IDs must match number of CEF dictionaries.")
+        return outputs
+
+    # Validate replace_cef input
+    if not isinstance(replace_cef, bool):
+        if isinstance(replace_cef, str):
+            replace_cef = replace_cef.lower() == 'true'
+        else:
+            replace_cef = False
+
+    phantom.debug(f"Processing {len(artifact_ids)} artifacts with replace_cef={replace_cef}")
+
+    # Process each artifact
+    for artifact_id, new_cef_dict in zip(artifact_ids, new_cef_dicts):
+        update_single_artifact(artifact_id, new_cef_dict)
+    
+    # Return a JSON-serializable object
+    assert json.dumps(outputs)  # Will raise an exception if the :outputs: object is not JSON-serializable
+    return outputs
