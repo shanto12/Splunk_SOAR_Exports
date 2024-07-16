@@ -1,11 +1,102 @@
-Subject: Request for Leave
+def generate_test_data(data_type=None, complexity=None, seed=None, **kwargs):
+    """
+    Generate test data based on specified parameters.
+    
+    Args:
+        data_type (str): Type of data to generate (string, dict, list_of_strings, list_of_dicts, list_of_list_of_dicts, list_of_list_of_strings, or mixed)
+        complexity (str): Complexity of the generated data (number of items)
+        seed (str): Seed for random number generator
+    
+    Returns:
+        dict: Generated test data
+    """
+    import phantom.rules as phantom
+    import random
+    import string
+    import json
+    
+    def debug_input(name, value):
+        phantom.debug(f"Input '{name}': type={type(value)}, value={value}")
+    
+    # Debug input parameters
+    debug_input("data_type", data_type)
+    debug_input("complexity", complexity)
+    debug_input("seed", seed)
+    
+    # Set default values if inputs are empty or None
+    data_type = data_type.lower() if data_type else "mixed"
+    complexity = int(complexity) if complexity and complexity.isdigit() else 3
+    seed = int(seed) if seed and seed.isdigit() else None
+    
+    # Set random seed for reproducibility
+    random.seed(seed)
+    
+    def generate_string():
+        return ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(5, 15)))
+    
+    def generate_dict():
+        return {generate_string(): generate_string() for _ in range(random.randint(2, 5))}
+    
+    def generate_list_of_strings():
+        return [generate_string() for _ in range(random.randint(3, 7))]
+    
+    def generate_list_of_dicts():
+        return [generate_dict() for _ in range(random.randint(2, 5))]
+    
+    def generate_list_of_list_of_dicts():
+        return [[generate_dict() for _ in range(random.randint(1, 3))] for _ in range(random.randint(2, 4))]
+    
+    def generate_list_of_list_of_strings():
+        return [[generate_string() for _ in range(random.randint(2, 4))] for _ in range(random.randint(2, 4))]
+    
+    generators = {
+        "string": generate_string,
+        "dict": generate_dict,
+        "list_of_strings": generate_list_of_strings,
+        "list_of_dicts": generate_list_of_dicts,
+        "list_of_list_of_dicts": generate_list_of_list_of_dicts,
+        "list_of_list_of_strings": generate_list_of_list_of_strings,
+    }
+    
+    outputs = {}
+    
+    if data_type == "mixed" or data_type not in generators:
+        # If data_type is mixed or invalid, generate mixed data
+        for _ in range(complexity):
+            key = generate_string()
+            generator = random.choice(list(generators.values()))
+            outputs[key] = generator()
+    else:
+        outputs = {data_type: generators[data_type]()}
+    
+    # Debug output
+    phantom.debug(f"Generated outputs: {json.dumps(outputs, indent=2)}")
+    
+    return outputs
 
-Hi Adam,
+def main():
+    import json
+    import phantom.rules as phantom
+    
+    parameters = [
+        {
+            "data_type": "mixed",
+            "complexity": "5",
+            "seed": "42"
+        }
+    ]
+    
+    # Call the generate_test_data function
+    results = generate_test_data(**parameters[0])
+    
+    # Add the outputs to the Splunk SOAR action result
+    phantom.debug(f"Results: {json.dumps(results, indent=2)}")
+    
+    # Return success
+    return phantom.APP_SUCCESS
 
-Apologies for the late notice, but my in-laws have been experiencing health issues recently. My wife and I would like to visit them. May I take 5 days off next week, starting from the 22nd of July?
-
-Please let me know if this is okay so that I can book the flight tickets.
-
-Thanks,
-Shanto
-
+# Start the execution
+if __name__ == '__main__':
+    import phantom.rules as phantom
+    
+    exit(main())
