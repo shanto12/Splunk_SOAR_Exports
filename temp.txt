@@ -1,61 +1,75 @@
-def generate_test_data(
-    data_type_string=False,
-    data_type_dict=False,
-    data_type_list_of_strings=False,
-    data_type_list_of_dicts=False,
-    data_type_list_of_list_of_dicts=False,
-    data_type_list_of_list_of_strings=False,
-    data_type_mixed=False,
-    complexity=None,
-    seed=None,
-    **kwargs
-):
+def generate_test_data(data_type_string=None, data_type_dict=None, data_type_list_of_strings=None,
+                       data_type_list_of_dicts=None, data_type_list_of_list_of_dicts=None,
+                       data_type_list_of_list_of_strings=None, data_type_mixed=None,
+                       complexity=None, seed=None, **kwargs):
+    """
+    Generate test data based on specified parameters.
+    
+    Args:
+        data_type_string (bool): Generate a string
+        data_type_dict (bool): Generate a dictionary
+        data_type_list_of_strings (bool): Generate a list of strings
+        data_type_list_of_dicts (bool): Generate a list of dictionaries
+        data_type_list_of_list_of_dicts (bool): Generate a list of list of dictionaries
+        data_type_list_of_list_of_strings (bool): Generate a list of list of strings
+        data_type_mixed (bool): Generate mixed data types
+        complexity (str): Complexity of the generated data (number of items)
+        seed (str): Seed for random number generator
+    
+    Returns:
+        dict: A dictionary containing the generated test data and success status
+    """
+    import phantom.rules as phantom
     import random
     import string
     import json
-
+    
     def debug_print(message):
-        print(f"DEBUG: {message}")
-
+        phantom.debug(message)
+    
     debug_print(f"Input complexity: {complexity}")
     debug_print(f"Input seed: {seed}")
-
+    
+    # Convert string 'true'/'false' to boolean
+    for param in kwargs:
+        if isinstance(kwargs[param], str):
+            kwargs[param] = kwargs[param].lower() == 'true'
+    
     # Set default values if inputs are empty or None
-    complexity = complexity if isinstance(complexity, int) else int(complexity) if isinstance(complexity, str) and complexity.isdigit() else 10
-    seed = seed if isinstance(seed, int) else int(seed) if isinstance(seed, str) and seed.strip('-').isdigit() else None
-
+    complexity = int(complexity) if complexity and complexity.isdigit() else 10
+    seed = int(seed) if seed and seed.strip('-').isdigit() else None
+    
     debug_print(f"Processed complexity: {complexity}")
     debug_print(f"Processed seed: {seed}")
-
+    
     # Set random seed for reproducibility
     random.seed(seed)
-
+    
     def generate_string():
-        # Use complexity to determine string length
         length = random.randint(complexity, complexity * 2)
         debug_print(f"Generating string of length: {length}")
         return ''.join(random.choices(string.ascii_letters + string.digits + string.punctuation, k=length))
-
+    
     def generate_dict():
         return {generate_string(): generate_string() for _ in range(random.randint(2, 5))}
-
+    
     def generate_list_of_strings():
         return [generate_string() for _ in range(random.randint(3, 7))]
-
+    
     def generate_list_of_dicts():
-        return [generate_dict() for _ in range(random.randint(2, 5))}
-
+        return [generate_dict() for _ in range(random.randint(2, 5))]
+    
     def generate_list_of_list_of_dicts():
-        return [[generate_dict() for _ in range(random.randint(1, 3))] for _ in range(random.randint(2, 4))}
-
+        return [[generate_dict() for _ in range(random.randint(1, 3))] for _ in range(random.randint(2, 4))]
+    
     def generate_list_of_list_of_strings():
-        return [[generate_string() for _ in range(random.randint(2, 4))] for _ in range(random.randint(2, 4))}
-
+        return [[generate_string() for _ in range(random.randint(2, 4))] for _ in range(random.randint(2, 4))]
+    
     def generate_mixed():
         generators = [generate_string, generate_dict, generate_list_of_strings, generate_list_of_dicts, 
                       generate_list_of_list_of_dicts, generate_list_of_list_of_strings]
         return random.choice(generators)()
-
+    
     generators = {
         "string": generate_string,
         "dict": generate_dict,
@@ -65,28 +79,30 @@ def generate_test_data(
         "list_of_list_of_strings": generate_list_of_list_of_strings,
         "mixed": generate_mixed
     }
-
+    
     outputs = {}
-
+    
     # Generate data for each selected type
     for data_type, generate in generators.items():
-        if locals()[f"data_type_{data_type}"]:
+        if kwargs.get(f"data_type_{data_type}", False):
             debug_print(f"Generating data for type: {data_type}")
             outputs[data_type] = generate() if data_type != "mixed" else [generate() for _ in range(complexity)]
-
+    
     # If no type was selected, generate mixed data
     if not outputs:
         debug_print("No specific type selected, generating mixed data")
         outputs["mixed"] = [generate_mixed() for _ in range(complexity)]
-
+    
     debug_print(f"Generated outputs: {json.dumps(outputs, indent=2)}")
-
+    
     return {
         "test_data": outputs,
         "success": True
     }
 
-# Test the function
-test_result = generate_test_data(data_type_string=True, complexity="100", seed="42")
-print(json.dumps(test_result, indent=2))
-print(f"Length of generated string: {len(test_result['test_data']['string'])}")
+# Optional: For testing in Splunk SOAR
+if __name__ == '__main__':
+    import json
+    # Example usage
+    test_result = generate_test_data(data_type_string='true', complexity='100', seed='42')
+    print(json.dumps(test_result, indent=2))
