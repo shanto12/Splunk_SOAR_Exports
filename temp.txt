@@ -1,1 +1,1 @@
-seed = int(seed) if seed is not None else None if isinstance(seed, (int, str)) else None
+seed = seed if isinstance(seed, int) else int(seed) if seed and isinstance(seed, str) and seed.strip('-').isdigit() else None
