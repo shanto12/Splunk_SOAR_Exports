@@ -1,1 +1,5 @@
-seed = seed if isinstance(seed, int) else int(seed) if seed and isinstance(seed, str) and seed.strip('-').isdigit() else None
+# Complexity
+complexity = complexity if isinstance(complexity, int) else int(complexity) if isinstance(complexity, str) and complexity.isdigit() else 3
+
+# Seed
+seed = seed if isinstance(seed, int) else int(seed) if isinstance(seed, str) and seed.strip('-').isdigit() else None
