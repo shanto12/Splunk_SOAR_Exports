@@ -1,5 +1,101 @@
-# Complexity
-complexity = complexity if isinstance(complexity, int) else int(complexity) if isinstance(complexity, str) and complexity.isdigit() else 3
+def generate_test_data(
+    data_type_string=False,
+    data_type_dict=False,
+    data_type_list_of_strings=False,
+    data_type_list_of_dicts=False,
+    data_type_list_of_list_of_dicts=False,
+    data_type_list_of_list_of_strings=False,
+    data_type_mixed=False,
+    complexity=None,
+    seed=None,
+    **kwargs
+):
+    """
+    Generate test data based on specified parameters.
+    
+    Args:
+        data_type_string (bool): Generate a string
+        data_type_dict (bool): Generate a dictionary
+        data_type_list_of_strings (bool): Generate a list of strings
+        data_type_list_of_dicts (bool): Generate a list of dictionaries
+        data_type_list_of_list_of_dicts (bool): Generate a list of list of dictionaries
+        data_type_list_of_list_of_strings (bool): Generate a list of list of strings
+        data_type_mixed (bool): Generate mixed data types
+        complexity (str): Complexity of the generated data (number of items)
+        seed (str): Seed for random number generator
+    
+    Returns:
+        dict: A dictionary containing the generated test data and success status
+    """
+    import phantom.rules as phantom
+    import random
+    import string
+    import json
 
-# Seed
-seed = seed if isinstance(seed, int) else int(seed) if isinstance(seed, str) and seed.strip('-').isdigit() else None
+    def debug_input(name, value):
+        phantom.debug(f"Input '{name}': type={type(value)}, value={value}")
+
+    def generate_string():
+        return ''.join(random.choices(string.ascii_letters + string.digits, k=random.randint(5, 15)))
+
+    def generate_dict():
+        return {generate_string(): generate_string() for _ in range(random.randint(2, 5))}
+
+    def generate_list_of_strings():
+        return [generate_string() for _ in range(random.randint(3, 7))]
+
+    def generate_list_of_dicts():
+        return [generate_dict() for _ in range(random.randint(2, 5))]
+
+    def generate_list_of_list_of_dicts():
+        return [[generate_dict() for _ in range(random.randint(1, 3))] for _ in range(random.randint(2, 4))]
+
+    def generate_list_of_list_of_strings():
+        return [[generate_string() for _ in range(random.randint(2, 4))] for _ in range(random.randint(2, 4))]
+
+    def generate_mixed():
+        generators = [generate_string, generate_dict, generate_list_of_strings, generate_list_of_dicts, 
+                      generate_list_of_list_of_dicts, generate_list_of_list_of_strings]
+        return random.choice(generators)()
+
+    # Debug input parameters
+    for param, value in locals().items():
+        if param != 'kwargs':
+            debug_input(param, value)
+
+    # Set default values if inputs are empty or None
+    complexity = complexity if isinstance(complexity, int) else int(complexity) if isinstance(complexity, str) and complexity.isdigit() else 3
+    seed = seed if isinstance(seed, int) else int(seed) if isinstance(seed, str) and seed.strip('-').isdigit() else None
+
+    # Set random seed for reproducibility
+    random.seed(seed)
+
+    generators = {
+        "string": generate_string,
+        "dict": generate_dict,
+        "list_of_strings": generate_list_of_strings,
+        "list_of_dicts": generate_list_of_dicts,
+        "list_of_list_of_dicts": generate_list_of_list_of_dicts,
+        "list_of_list_of_strings": generate_list_of_list_of_strings,
+        "mixed": generate_mixed
+    }
+
+    outputs = {}
+
+    # Generate data for each selected type
+    for data_type, generate in generators.items():
+        if locals()[f"data_type_{data_type}"]:
+            outputs[data_type] = generate() if data_type != "mixed" else [generate() for _ in range(complexity)]
+
+    # If no type was selected, generate mixed data
+    if not outputs:
+        outputs["mixed"] = [generate_mixed() for _ in range(complexity)]
+
+    # Debug output
+    phantom.debug(f"Generated outputs: {json.dumps(outputs, indent=2)}")
+
+    # Return the results in the format expected by Splunk SOAR
+    return {
+        "test_data": outputs,
+        "success": True
+    }
