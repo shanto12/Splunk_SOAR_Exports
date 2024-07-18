@@ -1,7 +1,7 @@
 def generate_test_data(data_type_string=None, data_type_dict=None, data_type_list_of_strings=None,
                        data_type_list_of_dicts=None, data_type_list_of_list_of_dicts=None,
                        data_type_list_of_list_of_strings=None, data_type_mixed=None,
-                       complexity=None, seed=None, **kwargs):
+                       complexity=None, seed=None):
     """
     Generate test data based on specified parameters.
     
@@ -31,9 +31,19 @@ def generate_test_data(data_type_string=None, data_type_dict=None, data_type_lis
     debug_print(f"Input seed: {seed}")
     
     # Convert string 'true'/'false' to boolean
-    for param in kwargs:
-        if isinstance(kwargs[param], str):
-            kwargs[param] = kwargs[param].lower() == 'true'
+    data_types = {
+        'string': data_type_string,
+        'dict': data_type_dict,
+        'list_of_strings': data_type_list_of_strings,
+        'list_of_dicts': data_type_list_of_dicts,
+        'list_of_list_of_dicts': data_type_list_of_list_of_dicts,
+        'list_of_list_of_strings': data_type_list_of_list_of_strings,
+        'mixed': data_type_mixed
+    }
+    
+    for data_type in data_types:
+        if isinstance(data_types[data_type], str):
+            data_types[data_type] = data_types[data_type].lower() == 'true'
     
     # Set default values if inputs are empty or None
     def safe_int_conversion(value, default):
@@ -94,10 +104,10 @@ def generate_test_data(data_type_string=None, data_type_dict=None, data_type_lis
     outputs = {}
     
     # Generate data for each selected type
-    for data_type, generate in generators.items():
-        if kwargs.get(f"data_type_{data_type}", False):
+    for data_type, selected in data_types.items():
+        if selected:
             debug_print(f"Generating data for type: {data_type}")
-            outputs[data_type] = generate() if data_type != "mixed" else [generate() for _ in range(complexity)]
+            outputs[data_type] = generators[data_type]() if data_type != "mixed" else [generate_mixed() for _ in range(complexity)]
     
     # If no type was selected, generate mixed data
     if not outputs:
@@ -109,3 +119,36 @@ def generate_test_data(data_type_string=None, data_type_dict=None, data_type_lis
     return {
         "outputs": outputs
     }
+
+# Test the function (this part should be removed before adding to Splunk SOAR)
+if __name__ == "__main__":
+    import json
+    
+    # Mock phantom.debug function for testing
+    def phantom_debug(message):
+        print(f"DEBUG: {message}")
+    
+    # Replace phantom.debug with our mock function
+    phantom.debug = phantom_debug
+    
+    # Test cases
+    test_cases = [
+        {"data_type_string": "true", "complexity": "50", "seed": "42"},
+        {"data_type_dict": "true", "data_type_list_of_strings": "true", "complexity": "10", "seed": "123"},
+        {"data_type_mixed": "true", "complexity": "5", "seed": "789"},
+        {}  # Test with no types selected
+    ]
+    
+    for i, case in enumerate(test_cases, 1):
+        print(f"\nTest Case {i}:")
+        result = generate_test_data(**case)
+        print(json.dumps(result, indent=2))
+        print(f"Number of output types: {len(result['outputs'])}")
+        for key, value in result['outputs'].items():
+            print(f"Type of {key}: {type(value)}")
+            if isinstance(value, str):
+                print(f"Length of {key}: {len(value)}")
+            elif isinstance(value, list):
+                print(f"Length of {key} list: {len(value)}")
+
+    print("\nAll test cases completed successfully.")
