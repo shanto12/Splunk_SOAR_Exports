@@ -1,1 +1,1 @@
-https://<your_soar_instance>/rest/artifact?_filter_json={"$or": [{"field1": "3"}, {"field2": "55"}, {"field3": "value3"}]}
+https://<your_soar_instance>/rest/artifact?_filter_field1="3"&_filter_field2="55"&_filter_logical=or
