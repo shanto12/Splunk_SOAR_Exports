@@ -6,18 +6,18 @@ def generate_test_data(data_type_string=None, data_type_dict=None, data_type_lis
     Generate test data based on specified parameters.
     
     Args:
-        data_type_string (bool): Generate a string
-        data_type_dict (bool): Generate a dictionary
-        data_type_list_of_strings (bool): Generate a list of strings
-        data_type_list_of_dicts (bool): Generate a list of dictionaries
-        data_type_list_of_list_of_dicts (bool): Generate a list of list of dictionaries
-        data_type_list_of_list_of_strings (bool): Generate a list of list of strings
-        data_type_mixed (bool): Generate mixed data types
+        data_type_string (str): Generate a string if 'true'
+        data_type_dict (str): Generate a dictionary if 'true'
+        data_type_list_of_strings (str): Generate a list of strings if 'true'
+        data_type_list_of_dicts (str): Generate a list of dictionaries if 'true'
+        data_type_list_of_list_of_dicts (str): Generate a list of list of dictionaries if 'true'
+        data_type_list_of_list_of_strings (str): Generate a list of list of strings if 'true'
+        data_type_mixed (str): Generate mixed data types if 'true'
         complexity (str): Complexity of the generated data (number of items)
         seed (str): Seed for random number generator
     
     Returns:
-        dict: A dictionary containing the generated test data and success status
+        dict: A dictionary named 'outputs' containing the generated test data
     """
     import phantom.rules as phantom
     import random
@@ -96,13 +96,5 @@ def generate_test_data(data_type_string=None, data_type_dict=None, data_type_lis
     debug_print(f"Generated outputs: {json.dumps(outputs, indent=2)}")
     
     return {
-        "test_data": outputs,
-        "success": True
+        "outputs": outputs
     }
-
-# Optional: For testing in Splunk SOAR
-if __name__ == '__main__':
-    import json
-    # Example usage
-    test_result = generate_test_data(data_type_string='true', complexity='100', seed='42')
-    print(json.dumps(test_result, indent=2))
